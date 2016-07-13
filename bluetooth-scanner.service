@@ -1,0 +1,12 @@
+[Unit]
+Description=Bluetooth Scanner service
+After=bluetooth.target
+
+[Service]
+Type=simple
+Environment=PYTHONPATH=/srv/pyvera:/srv/ibeacon-scanner
+ExecStart=/srv/scanner/run_scanner.py
+Restart=on-failure
+
+[Install]
+WantedBy=bluetooth.target
