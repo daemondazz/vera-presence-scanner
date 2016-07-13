@@ -11,7 +11,7 @@ file for systemd based systems. The startup script assumes both libraries are
 installed under /srv, although they just need to be somewhere in PYTHONPATH:
 
    $ cd /srv
-   $ sudo git clone https://github.com/switchdoclabs/iBeacon-Scanner- ibecaon-scanner
+   $ sudo git clone https://github.com/switchdoclabs/iBeacon-Scanner- ibeacon-scanner
    $ sudo git clone https://github.com/daemondazz/pyvera pyvera
    $ sudo git clone	https://github.com/daemondazz/vera-presence-scanner scanner
    $ sudo cp scanner/bluetooth-scanner.service /etc/systemd/system
