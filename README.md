@@ -20,6 +20,21 @@ If you want the scanner to automatically start at boot time:
 
    $ sudo systemctl enable bluetooth-scanner.service
 
+## Upgrading
+
+To upgrade to the lastest version, just cd into each of the git repositories
+created above and run a git pull:
+
+   $ for d in /srv/{ibeacon-scanner,pyvera,scanner}; do cd $d && sudo git pull; done
+   $ sudo service bluetooth-scanner restart
+
+If you are running this on my Raspberry Pi image you'll need to update the copy in the bind-mount location:
+
+   $ sudo remountrw
+   $ for d in /ro/srv/{ibeacon-scanner,pyvera,scanner}; do cd $d && sudo git pull; done
+   $ sudo remountro
+   $ sudo service bluetooth-scanner restart
+
 ## Troubleshooting
 
 PyVera has been written to crash out if it encounters anything that it doesn't
