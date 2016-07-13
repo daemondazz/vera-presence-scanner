@@ -53,7 +53,7 @@ if __name__ == '__main__':
             logger.debug('Searching for known bluetooth devices')
             for phone in known_phones.keys():
                 p = known_phones[phone]
-                found = bluetooth.lookup_name(phone, timeout=5) is not None
+                found = len(bluetooth.find_service(address=phone)) > 0
                 # If found, update straight away
                 if found:
                     known_phones[phone]['last_seen'] = time.time()
