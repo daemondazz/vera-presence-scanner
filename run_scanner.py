@@ -3,14 +3,12 @@
 VERA_IP = '172.17.66.15'
 
 import bluetooth
-import bluetooth._bluetooth as bluez
 import datetime
 import logging
 import logging.handlers
 import sys
 import time
 
-import blescan
 import vera
 
 
@@ -35,62 +33,93 @@ if __name__ == '__main__':
             elif device_type == 'ibeacon':
                 known_beacons[address] = {'name': d.name, 'last_seen': None, 'last_state': None, 'vera_device': d}
 
-    dev_id = 0
-    try:
-        sock = bluez.hci_open_dev(dev_id)
-    except:
-        print "error accessing bluetooth device..."
+    # If we didn't find any devices, let's just sleep a bit and then die
+    # This should prevent systemd from freaking out we're respawning too fast
+    if not known_phones and not known_beacons:
+        logger.debug('No devices to search for, bailing out')
+        time.sleep(30)
         sys.exit(1)
 
-    blescan.hci_le_set_scan_parameters(sock)
-    blescan.hci_enable_le_scan(sock)
+    # Only initialise the bluez stack if we're going to be searching for ibeacons
+    if known_beacons:
+        logger.debug('Initialising bluetooth stack to search for ibeacons')
+        import bluetooth._bluetooth as bluez
+        import blescan
+        dev_id = 0
+        try:
+            sock = bluez.hci_open_dev(dev_id)
+            blescan.hci_le_set_scan_parameters(sock)
+            blescan.hci_enable_le_scan(sock)
+        except:
+            print "error accessing bluetooth device..."
+            sys.exit(1)
 
-    next_active = 0
+    # Only initialise our bluetooth search variables if we're searching for
+    # bluetooth devices
+    if known_phones:
+        next_active = 0
+
+    # If we made it this far, then lets keep running forever
     while True:
 
-        # We only perform an active check for phones once per minute
-        if time.time() >= next_active:
-            logger.debug('Searching for known bluetooth devices')
-            for phone in known_phones.keys():
-                p = known_phones[phone]
-                found = len(bluetooth.find_service(address=phone)) > 0
-                # If found, update straight away
-                if found:
-                    known_phones[phone]['last_seen'] = time.time()
-                    if p['last_state'] != found:
-                        logger.debug('Found missing bluetooth %s' % phone)
-                        known_phones[phone]['last_state'] = found
-                        known_phones[phone]['vera_device'].set_present(found)
-                # If not found, don't notify for approx 3 minutes
-                else:
-                    if p['last_seen'] is None or p['last_seen'] < time.time() - 165:
+        # Only do the search for phones if we've been configured to
+        if known_phones:
+            # We only perform an active check for phones once per minute
+            if time.time() >= next_active:
+                logger.debug('Searching for known bluetooth devices')
+                for phone in known_phones.keys():
+                    p = known_phones[phone]
+                    found = len(bluetooth.find_service(address=phone)) > 0
+
+                    # If found, update straight away
+                    if found:
+                        known_phones[phone]['last_seen'] = time.time()
                         if p['last_state'] != found:
-                            logger.debug('Lost bluetooth %s' % phone)
+                            logger.debug('Found missing bluetooth %s' % phone)
                             known_phones[phone]['last_state'] = found
                             known_phones[phone]['vera_device'].set_present(found)
-            next_active = time.mktime(datetime.datetime.now().replace(second=0, microsecond=0).timetuple()) + 60
-            logger.debug('Done, sleeping until %d' % next_active)
 
-        # But we search for ibeacons as fast as we can
-        returnedList = blescan.parse_events(sock, 20)
-        found_beacons = {}
-        for beacon in returnedList:
-            beacon = beacon.split(',')[0]
-            if beacon not in known_beacons or beacon in found_beacons:
-                continue
-            found_beacons[beacon] = True
-            if beacon in known_beacons:
-                if not known_beacons[beacon]['last_state']:
-                    logger.debug('Found missing ibeacon %s' % beacon)
-                    known_beacons[beacon]['vera_device'].set_present(True)
-                known_beacons[beacon]['last_seen'] = time.time()
-                known_beacons[beacon]['last_state'] = time.time()
+                    # If not found, don't notify for approx 3 minutes
+                    else:
+                        if p['last_seen'] is None or p['last_seen'] < time.time() - 165:
+                            if p['last_state'] != found:
+                                logger.debug('Lost bluetooth %s' % phone)
+                                known_phones[phone]['last_state'] = found
+                                known_phones[phone]['vera_device'].set_present(found)
 
-        # Lets check for beacons that have disappeared
-        for beacon in known_beacons:
-            b = known_beacons[beacon]
-            if b['last_state'] is None or b['last_state']:
-                if b['last_seen'] is None or b['last_seen'] < time.time() - 180:
-                    logger.debug('Lost ibeacon %s' % beacon)
-                    known_beacons[beacon]['last_state'] = False
-                    known_beacons[beacon]['vera_device'].set_present(False)
+                # Calculate time till the start of the next minute
+                next_active = time.mktime(datetime.datetime.now().replace(second=0, microsecond=0).timetuple()) + 60
+                logger.debug('Done, next poll is %d' % next_active)
+
+        # Only search for ibeacons if we've been configured to
+        if known_beacons:
+
+            # But we search for ibeacons as fast as we can
+            returnedList = blescan.parse_events(sock, 20)
+            found_beacons = {}
+            for beacon in returnedList:
+                beacon = beacon.split(',')[0]
+                if beacon not in known_beacons or beacon in found_beacons:
+                    continue
+                found_beacons[beacon] = True
+                if beacon in known_beacons:
+                    if not known_beacons[beacon]['last_state']:
+                        logger.debug('Found missing ibeacon %s' % beacon)
+                        known_beacons[beacon]['vera_device'].set_present(True)
+                    known_beacons[beacon]['last_seen'] = time.time()
+                    known_beacons[beacon]['last_state'] = time.time()
+
+            # Lets check for beacons that have disappeared
+            for beacon in known_beacons:
+                b = known_beacons[beacon]
+                if b['last_state'] is None or b['last_state']:
+                    if b['last_seen'] is None or b['last_seen'] < time.time() - 180:
+                        logger.debug('Lost ibeacon %s' % beacon)
+                        known_beacons[beacon]['last_state'] = False
+                        known_beacons[beacon]['vera_device'].set_present(False)
+
+        # If we're not searching for beacons, then we must be searching for phones
+        # lets sleep until our next search time
+        else:
+            logger.debug('Sleeping until next poll time')
+            time.sleep(next_active - time.time())
