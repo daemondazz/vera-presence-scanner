@@ -6,41 +6,79 @@ plugin.
 
 ## Installation
 
-This module depends on two external libraries, and also has a system startup
-file for systemd based systems. The startup script assumes both libraries are
-installed under /srv, although they just need to be somewhere in PYTHONPATH:
+Install Jessie on the RPi.  Each RPi on the network must have a unique hostname
+so if there is more than one RPi on the network, you must change the defaultset
+hostname to something unique.  To do this, use the RPI GUI configuration utility.
+Google how to startup with RPi if you are unfamiliar with how to do this.
+
+Next install the bluetooth library from a shell as follows:
+
+    $ sudo apt-get install python-bluez
+
+Now install the scanner s/w and set priviliges and executable statuses:
 
     $ cd /srv
-    $ sudo git clone https://github.com/switchdoclabs/iBeacon-Scanner- ibeacon-scanner
-    $ sudo git clone https://github.com/daemondazz/pyvera pyvera
     $ sudo git clone https://github.com/daemondazz/vera-presence-scanner scanner
+    $ cd scanner
+    $ sudo chown root:root *
+    $ sudo chmod +x *.py
+
+Finally, set it to autostart as a service
+
     $ sudo cp scanner/bluetooth-scanner.service /etc/systemd/system
-
-If you want the scanner to automatically start at boot time:
-
-    $ sudo systemctl enable bluetooth-scanner.service
+    $ sudo systemctl enable bluetooth-scanner
 
 ## Upgrading
 
-To upgrade to the lastest version, just cd into each of the git repositories
-created above and run a git pull:
+To upgrade to the lastest version:
 
-    $ for d in /srv/{ibeacon-scanner,pyvera,scanner}; do cd $d && sudo git pull; done
-    $ sudo service bluetooth-scanner restart
+    $ cd /srv/scanner
+    $ sudo git pull
+    $ sudo chown root:root *
+    $ sudo chmod +x *.py
+    $ sudo cp scanner/bluetooth-scanner.service /etc/systemd/system
+    $ sudo systemctl enable bluetooth-scanner
 
-If you are running this on my Raspberry Pi image you'll need to update the copy in the bind-mount location:
+## Configuring Scanner
 
-    $ sudo remountrw
-    $ for d in /ro/srv/{ibeacon-scanner,pyvera,scanner}; do cd $d && sudo git pull; done
-    $ sudo remountro
-    $ sudo service bluetooth-scanner restart
+After installing or upgrading you must configure the scanner.
 
-## Troubleshooting
+    $ sudo nano /srv/scanner/run_scanner.py
 
-PyVera has been written to crash out if it encounters anything that it doesn't
-understand. The primary instance of this is having scenes configured on your
-Vera that have devices with serviceIDs that it doesn't know about.
+Now edit the scanner name and the Vera IP address.  In addition you can
+edit the timers to optimize the scanning.
 
-There is a tuple in my fork of PyVera at about line 582 that defines the
-serviceIDs that we know we can ignore. If you have any devices installed that
-need to be added to that, please send me a patch so I can include them.
+When finished, press ^x|y|<Enter> to save your changes then
+
+    $ sudo systemctl restart bluetooth-scanner
+
+## Usage Tips
+
+The scanner gets a list of Presence devices from Vera and updates that list
+at a configurable period.  These devices can be beacons or bluetooth devices
+(phones, tablets etc.).
+
+Beacon devices transmit continually.  Periodically (configurable period),
+the scanner listens for beacon transmissions.  It listens until it gets a maximum
+number of reports or until it times out waiting for a report.  All reports
+received are each processed as mentioned below.
+
+Bluetooth devices must be polled for a reply.  One device at a time is polled.
+This is far less efficient than the Beacon polling and can affect performance
+as each device out of range will timeout, slowing down all processing (including
+beacon scanning).  Also, the polling of a bluetooth device can cause faster
+discharge of the device as it must reply to the poll.  To mitigate this, there
+are two pollperiods for bluetooth devices.  Live devices are polled at one rate
+(typically slow) and dead ones are polled at another rate (typically faster).
+If a reply for a given device is received, it is processed as mentioned below.
+
+When a live device is detected AND it has been at least the minimum report time
+since the last report, a report is sent to Vera identifying the scanner's hold
+time (time until a present device becomes absent), the scanner name and the RSSI.
+
+## Known Problems and Troubleshooting
+
+The only known problem is that the scanner does not start up reliably on
+system reboot.  After a reboot of the RPi, you must type:
+
+    $ sudo systemctl reboot bluetooth-scanner
