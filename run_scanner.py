@@ -11,6 +11,7 @@ POLLPERIOD_LIVE = 60  # Pollperiod for live bluetooth devices (s)
 POLLPERIOD_DEAD = 10  # Pollperiod for dead bluetooth devices (s)
 MIN_REPORT_IDLE_TIME = 30  # Min time between Vera updates for each device (s)
 VERA_SYNC_PERIOD = 600  # How often we sync device list to Vera (s)
+VERA_SYNC_RETRY = 10 # How often we retry sync if it fails or no devices (s)
 
 VERA_MSG_BASE = 'http://%s:3480' % (VERA_IP)
 SVC_ID = 'urn:afoyi-com:serviceId:PresenceSensor1'
@@ -22,6 +23,7 @@ import time
 import logging
 import logging.handlers
 import sys
+import math
 import struct
 import array
 import fcntl
@@ -39,7 +41,7 @@ def msg_vera(msg):
     msg --- the partial url of the message starting after <address:port>/
 
     Returns:
-    formatted json if the reply was json, otherwise returns the reply as is
+    reply from Vera json formatted if json, otherwise as string
     """
     url = '%s/%s' % (VERA_MSG_BASE, msg)
     for i in range(1,3):
@@ -118,6 +120,9 @@ def configure_known_devices(known_beacons, known_phones):
         return known_beacons, known_phones
     device_list = filter(lambda item: item['device_type'] == DEV_TYPE,
                          vera_objects['devices'])
+    # LUA is loosy goosy with str vs int, so make all id's string
+    for device in device_list:
+        device['id'] = str(device['id'])
     logger.debug('Checking Vera device list')
 
     # Check if previously known devices have been removed from Vera
@@ -219,7 +224,6 @@ def main():
     known_phones = {}
     next_Vera_sync = time.time()
     next_beacon_scan = time.time()
-    next_phone_scan = time.time()
     while True:
 
         # Get Vera devices if it is time
@@ -230,8 +234,8 @@ def main():
                 if known_beacons or known_phones:
                     break
                 logger.debug('No devices to search for, sleeping for %d secs'
-                             % VERA_SYNC_PERIOD)
-                time.sleep(VERA_SYNC_PERIOD)
+                             % VERA_SYNC_RETRY)
+                time.sleep(VERA_SYNC_RETRY)
             next_Vera_sync = time.time() + VERA_SYNC_PERIOD
 
         # Scan for iBeacons if it is time
@@ -321,6 +325,16 @@ def main():
                                  % address)
                 known_phones[address]['next_poll'] = (time.time()
                                                       + POLLPERIOD_DEAD)
+        # Sleep 'til next event ready
+        next_event = next_Vera_sync
+        if next_beacon_scan < next_event:
+            next_event = next_beacon_scan
+        for _, phone in known_phones.items():
+            if phone['next_poll'] < next_event:
+                next_event = phone['next_poll']
+        sleep_time = next_event - time.time()
+        if sleep_time > 0:
+            time.sleep(math.ceil(sleep_time))
 
 # create the logger for this module
 logger = logging.getLogger('Bluetooth Scanner')
