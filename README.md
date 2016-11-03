@@ -1,8 +1,9 @@
 # Vera Presence Sensor Bluetooth Scanner
 
 This program is a Python script that will perform both Bluetooth and iBeacon
-searches for devices that have been configured using the Presence Sensor
-plugin.
+searches for devices that have been configured using the Vera Presence Sensor
+plugin.  The compatible Vera device code and instructions are found at:
+https://github.com/daemondazz/vera-presence 
 
 ## Installation
 
@@ -15,13 +16,11 @@ Next install the bluetooth library from a shell as follows:
 
     $ sudo apt-get install python-bluez
 
-Now install the scanner s/w and set priviliges and executable statuses:
+Now install the scanner s/w:
 
     $ cd /srv
     $ sudo git clone https://github.com/daemondazz/vera-presence-scanner scanner
     $ cd scanner
-    $ sudo chown root:root *
-    $ sudo chmod +x *.py
 
 Finally, set it to autostart as a service
 
@@ -34,10 +33,7 @@ To upgrade to the lastest version:
 
     $ cd /srv/scanner
     $ sudo git pull
-    $ sudo chown root:root *
-    $ sudo chmod +x *.py
     $ sudo cp scanner/bluetooth-scanner.service /etc/systemd/system
-    $ sudo systemctl enable bluetooth-scanner
 
 ## Configuring Scanner
 
@@ -78,7 +74,4 @@ time (time until a present device becomes absent), the scanner name and the RSSI
 
 ## Known Problems and Troubleshooting
 
-The only known problem is that the scanner does not start up reliably on
-system reboot.  After a reboot of the RPi, you must type:
-
-    $ sudo systemctl reboot bluetooth-scanner
+No known problems!

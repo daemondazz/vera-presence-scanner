@@ -1,0 +1,8 @@
+# Default auto detect text files and perform LF normalization
+* text=auto
+
+# Specific files here should always be eol=lf
+*.md eol=lf
+*.py eol=lf
+*.service eol=lf
+*.txt eol=lf
