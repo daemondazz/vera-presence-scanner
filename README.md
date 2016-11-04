@@ -19,12 +19,12 @@ Next install the bluetooth library from a shell as follows:
 Now install the scanner s/w:
 
     $ cd /srv
-    $ sudo git clone https://github.com/daemondazz/vera-presence-scanner scanner
+    $ sudo git clone https://github.com/daemondazz/vera-presence-scanner.git scanner
     $ cd scanner
 
 Finally, set it to autostart as a service
 
-    $ sudo cp scanner/bluetooth-scanner.service /etc/systemd/system
+    $ sudo cp bluetooth-scanner.service /etc/systemd/system
     $ sudo systemctl enable bluetooth-scanner
 
 ## Upgrading
@@ -33,7 +33,7 @@ To upgrade to the lastest version:
 
     $ cd /srv/scanner
     $ sudo git pull
-    $ sudo cp scanner/bluetooth-scanner.service /etc/systemd/system
+    $ sudo cp bluetooth-scanner.service /etc/systemd/system
 
 ## Configuring Scanner
 
@@ -44,7 +44,7 @@ After installing or upgrading you must configure the scanner.
 Now edit the scanner name and the Vera IP address.  In addition you can
 edit the timers to optimize the scanning.
 
-When finished, press ^x|y|<Enter> to save your changes then
+When finished, press ^x|y|Enter to save your changes then
 
     $ sudo systemctl restart bluetooth-scanner
 
