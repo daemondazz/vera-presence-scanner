@@ -3,7 +3,7 @@
 This program is a Python script that will perform both Bluetooth and iBeacon
 searches for devices that have been configured using the Vera Presence Sensor
 plugin.  The compatible Vera device code and instructions are found at:
-https://github.com/daemondazz/vera-presence 
+https://github.com/daemondazz/vera-presence
 
 ## Installation
 
@@ -34,6 +34,7 @@ To upgrade to the lastest version:
     $ cd /srv/scanner
     $ sudo git pull
     $ sudo cp bluetooth-scanner.service /etc/systemd/system
+    $ sudo systemctl daemon-reload
 
 ## Configuring Scanner
 

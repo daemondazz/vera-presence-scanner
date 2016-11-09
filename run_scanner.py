@@ -327,7 +327,7 @@ def main():
                                                       + POLLPERIOD_DEAD)
         # Sleep 'til next event ready
         next_event = next_Vera_sync
-        if next_beacon_scan < next_event:
+        if (next_beacon_scan < next_event) and known_beacons:
             next_event = next_beacon_scan
         for _, phone in known_phones.items():
             if phone['next_poll'] < next_event:
